@@ -332,19 +332,10 @@ GOLD = '#e8c97d'
 SILVER = '#a8a8a8'
 
 
-st.markdown("""
-<div class="hero-section">
-    <span class="hero-tag">— DGen Analytics</span>
-    <h1>Quantum Portfolio<br/>Analytics Engine</h1>
-    <p class="hero-subtitle">
-        Institutional-grade risk analytics, efficient frontier optimization,
-        and correlation analysis — built for the modern investor.
-    </p>
-</div>
-""", unsafe_allow_html=True)
+st.markdown("<span style='font-family:DM Sans,sans-serif;font-size:0.65rem;letter-spacing:4px;text-transform:uppercase;color:#e8c97d;'>— DGen Analytics</span>", unsafe_allow_html=True)
+st.markdown("<h1 style='font-family:Syne,sans-serif;font-weight:800;font-size:2.8rem;letter-spacing:-1px;line-height:1.1;color:#f0f0f0;margin:8px 0 12px 0;'>Quantum Portfolio<br/>Analytics Engine</h1>", unsafe_allow_html=True)
+st.markdown("<p style='font-family:DM Sans,sans-serif;font-size:0.9rem;color:#444;max-width:480px;line-height:1.7;font-weight:300;margin-bottom:32px;'>Institutional-grade risk analytics, efficient frontier optimization, and correlation analysis — built for the modern investor.</p>", unsafe_allow_html=True)
 
-
-st.markdown('<div class="input-zone">', unsafe_allow_html=True)
 
 # Row 1: Tickers + Analyze
 col1, col2 = st.columns([3, 1])
@@ -355,9 +346,6 @@ with col2:
     analyze_btn = st.button("Analyze Portfolio")
 
 # Row 2: Timeframe + Risk-Free Rate
-st.markdown("<div style='height:12px'></div>", unsafe_allow_html=True)
-cfg1, cfg2 = st.columns([2, 2])
-
 TIMEFRAME_OPTIONS = {
     "6 Months": 0.5,
     "1 Year": 1,
@@ -367,12 +355,11 @@ TIMEFRAME_OPTIONS = {
     "7 Years": 7,
     "10 Years": 10,
 }
+cfg1, cfg2 = st.columns([2, 2])
 with cfg1:
     selected_timeframe = st.selectbox("Data Window", list(TIMEFRAME_OPTIONS.keys()), index=4)
 with cfg2:
     risk_free_rate = st.number_input("Risk-Free Rate (%)", min_value=0.0, max_value=30.0, value=7.0, step=0.25, format="%.2f") / 100
-
-st.markdown('</div>', unsafe_allow_html=True)
 
 # Compute date range from selection
 import datetime
@@ -405,6 +392,17 @@ st.markdown(f"""
 </div>
 """, unsafe_allow_html=True)
 
+def get_bounds(n_assets):
+    """
+    Returns (min_floor, max_cap) bounds per asset.
+    - Floor: ensures diversification, scales with n_assets
+    - Cap: prevents any single asset from dominating (max 40%)
+    """
+    min_floor = round(1.0 / (n_assets * 3), 4)
+    max_cap = min(0.40, 1.0 - (n_assets - 1) * min_floor)
+    max_cap = max(max_cap, min_floor * 2)
+    return [(min_floor, max_cap)] * n_assets
+
 def clean_weights(w, threshold=0.001):
     """Zero out weights below threshold, renormalize to sum=1."""
     w = np.array(w, dtype=float)
@@ -414,8 +412,8 @@ def clean_weights(w, threshold=0.001):
         w = w / total
     return w
 
-def is_corner_solution(w, threshold=0.80):
-    """Return True if any single asset dominates above threshold."""
+def is_corner_solution(w, threshold=0.38):
+    """Return True if any single asset is near the concentration cap."""
     return bool(np.max(w) > threshold)
 
 def compute_efficient_frontier(returns_df, n_simulations=N_SIMULATIONS, rf=0.07):
@@ -423,9 +421,8 @@ def compute_efficient_frontier(returns_df, n_simulations=N_SIMULATIONS, rf=0.07)
     cov_matrix = returns_df.cov() * 252
     n_assets = len(returns_df.columns)
 
-    # Min weight floor: each asset gets at least 2% to avoid degenerate solutions
-    min_w_bound = max(0.02, 1.0 / (n_assets * 4))
-    bounds = [(min_w_bound, 1.0)] * n_assets
+    # Bounds: min floor to prevent degenerate solutions, max cap to prevent concentration
+    bounds = get_bounds(n_assets)
 
     port_returns, port_vols, port_sharpes, port_weights = [], [], [], []
 
@@ -476,8 +473,7 @@ def compute_markowitz_frontier(mean_returns, cov_matrix, n_points=80, rf=0.07):
     quadratic program at each point.
     """
     n_assets = len(mean_returns)
-    min_w_bound = max(0.02, 1.0 / (n_assets * 4))
-    bounds = [(min_w_bound, 1.0)] * n_assets
+    bounds = get_bounds(n_assets)
     constraints_sum = {'type': 'eq', 'fun': lambda w: np.sum(w) - 1}
     w0 = np.ones(n_assets) / n_assets
 
@@ -612,8 +608,7 @@ def plot_markowitz_model(mean_returns, cov_matrix, tickers, rf=0.07):
     - Hover shows full weight decomposition at each frontier point
     """
     n_assets = len(tickers)
-    min_w_bound = max(0.02, 1.0 / (n_assets * 4))
-    bounds = [(min_w_bound, 1.0)] * n_assets
+    bounds = get_bounds(n_assets)
     w0 = np.ones(n_assets) / n_assets
     constraints_sum = {'type': 'eq', 'fun': lambda w: np.sum(w) - 1}
 
@@ -738,38 +733,53 @@ def plot_markowitz_model(mean_returns, cov_matrix, tickers, rf=0.07):
 
 
 def plot_weight_allocation(weights, tickers, title="Portfolio Allocation"):
-    """Donut chart for portfolio weights — filters out near-zero allocations."""
-    colors = [GOLD, SILVER, '#6b8fa8', '#7a8a6b', '#8a6b7a', '#6b7a8a',
-              '#c87d7d', '#7dc8a8', '#a87dc8', '#7dc8c8']
+    """Donut chart — top holdings shown individually, rest grouped as Others."""
+    colors = [GOLD, '#6b8fa8', '#c87d7d', '#7dc8a8', '#a87dc8', '#7dc8c8',
+              '#c8b87d', '#8fa86b', '#a86b8f', '#6b8fa8', SILVER]
 
-    # Clean: zero out anything < 0.1%, renormalize
     w_clean = clean_weights(weights, threshold=0.001)
 
-    # Filter to only meaningful slices for display
-    display_pairs = [(t, w, colors[i % len(colors)]) for i, (t, w) in enumerate(zip(tickers, w_clean)) if w > 0.001]
-    d_labels = [p[0] for p in display_pairs]
-    d_values = [p[1] * 100 for p in display_pairs]
-    d_colors = [p[2] for p in display_pairs]
+    # Sort by weight descending
+    pairs = sorted(zip(tickers, w_clean), key=lambda x: x[1], reverse=True)
+
+    # Show top 6 individually, group rest as "Others"
+    MAX_SLICES = 6
+    top = pairs[:MAX_SLICES]
+    rest = pairs[MAX_SLICES:]
+
+    d_labels = [p[0] for p in top]
+    d_values = [p[1] * 100 for p in top]
+    d_colors = colors[:len(top)]
+
+    if rest:
+        others_val = sum(p[1] for p in rest) * 100
+        if others_val > 0.1:
+            d_labels.append(f"Others ({len(rest)})")
+            d_values.append(others_val)
+            d_colors.append('#2a2a2a')
 
     fig = go.Figure(go.Pie(
         labels=d_labels,
         values=d_values,
         hole=0.55,
-        textinfo='label+percent',
-        textfont=dict(family='DM Sans', size=10, color='#888'),
-        marker=dict(
-            colors=d_colors,
-            line=dict(color='#0a0a0a', width=2)
-        ),
-        hovertemplate='<b>%{label}</b><br>Weight: %{value:.1f}%<extra></extra>'
+        textinfo='percent',           # label removed — too crowded; use legend instead
+        textposition='inside',
+        textfont=dict(family='DM Sans', size=10, color='#1a1a1a'),
+        marker=dict(colors=d_colors, line=dict(color='#0a0a0a', width=2)),
+        hovertemplate='<b>%{label}</b><br>Weight: %{value:.1f}%<extra></extra>',
+        sort=False,
     ))
 
     layout = PLOTLY_LAYOUT.copy()
     layout.update(dict(
         title=dict(text=title, font=dict(color='#333', size=11, family='DM Sans'), x=0),
-        height=340,
+        height=360,
         showlegend=True,
-        legend=dict(font=dict(color='#444', size=9, family='DM Sans'), bgcolor='#111', bordercolor='#1e1e1e', borderwidth=1),
+        legend=dict(
+            font=dict(color='#666', size=9, family='DM Sans'),
+            bgcolor='#111', bordercolor='#1e1e1e', borderwidth=1,
+            orientation='v', x=1.02, y=0.5,
+        ),
         annotations=[dict(
             text='Weights',
             x=0.5, y=0.5,
@@ -992,13 +1002,12 @@ if analyze_btn and ticker_input:
                         <div style="margin: 8px 0 24px 0; padding: 16px 20px; background: #1a1208;
                              border: 1px solid #e8c97d44; border-left: 3px solid #e8c97d; border-radius: 4px;">
                             <p style="color:#e8c97d !important; font-size:0.7rem !important; letter-spacing:2px;
-                               text-transform:uppercase; margin-bottom:4px;">⚠ Corner Solution Detected</p>
+                               text-transform:uppercase; margin-bottom:4px;">⚠ High Concentration</p>
                             <p style="color:#888 !important; font-size:0.78rem !important; line-height:1.7; margin:0;">
-                                The optimizer allocated <strong style="color:#e8c97d;">{top_pct:.1f}%</strong> to <strong style="color:#e8c97d;">{top_ticker}</strong> —
-                                likely because it's the only positive-return asset in the selected timeframe.
-                                This is mathematically optimal but not a diversified portfolio.
-                                A <strong style="color:#aaa;">minimum 2% floor</strong> per asset is applied.
-                                Consider using a longer data window (3Y+) for more balanced results.
+                                <strong style="color:#e8c97d;">{top_ticker}</strong> received the maximum allowed allocation of
+                                <strong style="color:#e8c97d;">{top_pct:.1f}%</strong> — it significantly outperformed all other assets
+                                in the selected timeframe. A <strong style="color:#aaa;">40% concentration cap</strong> and minimum
+                                floor per asset are applied to ensure diversification. Results are most reliable on a <strong style="color:#aaa;">3Y+ window</strong>.
                             </p>
                         </div>
                         """, unsafe_allow_html=True)
