@@ -276,36 +276,7 @@ st.markdown("""
     ::-webkit-scrollbar { width: 3px; }
     ::-webkit-scrollbar-track { background: #0a0a0a; }
     ::-webkit-scrollbar-thumb { background: #2a2a2a; border-radius: 2px; }
-    </style>
-""", unsafe_allow_html=True)
 
-
-PLOTLY_LAYOUT = dict(
-    paper_bgcolor='#0d0d0d',
-    plot_bgcolor='#0d0d0d',
-    font=dict(family='DM Sans', color='#666', size=11),
-    margin=dict(l=40, r=40, t=40, b=40),
-    xaxis=dict(gridcolor='#161616', linecolor='#1e1e1e', tickfont=dict(color='#444', size=10)),
-    yaxis=dict(gridcolor='#161616', linecolor='#1e1e1e', tickfont=dict(color='#444', size=10)),
-)
-
-GOLD = '#e8c97d'
-SILVER = '#a8a8a8'
-
-
-st.markdown("""
-<div class="hero-section">
-    <span class="hero-tag">— DGen Analytics</span>
-    <h1>Quantum Portfolio<br/>Analytics Engine</h1>
-    <p class="hero-subtitle">
-        Institutional-grade risk analytics, efficient frontier optimization,
-        and correlation analysis — built for the modern investor.
-    </p>
-</div>
-""", unsafe_allow_html=True)
-
-st.markdown("""
-    <style>
     /* Select box styling */
     .stSelectbox > div > div {
         background: #111 !important;
@@ -347,6 +318,32 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
+
+PLOTLY_LAYOUT = dict(
+    paper_bgcolor='#0d0d0d',
+    plot_bgcolor='#0d0d0d',
+    font=dict(family='DM Sans', color='#666', size=11),
+    margin=dict(l=40, r=40, t=40, b=40),
+    xaxis=dict(gridcolor='#161616', linecolor='#1e1e1e', tickfont=dict(color='#444', size=10)),
+    yaxis=dict(gridcolor='#161616', linecolor='#1e1e1e', tickfont=dict(color='#444', size=10)),
+)
+
+GOLD = '#e8c97d'
+SILVER = '#a8a8a8'
+
+
+st.markdown("""
+<div class="hero-section">
+    <span class="hero-tag">— DGen Analytics</span>
+    <h1>Quantum Portfolio<br/>Analytics Engine</h1>
+    <p class="hero-subtitle">
+        Institutional-grade risk analytics, efficient frontier optimization,
+        and correlation analysis — built for the modern investor.
+    </p>
+</div>
+""", unsafe_allow_html=True)
+
+
 st.markdown('<div class="input-zone">', unsafe_allow_html=True)
 
 # Row 1: Tickers + Analyze
@@ -359,7 +356,7 @@ with col2:
 
 # Row 2: Timeframe + Risk-Free Rate
 st.markdown("<div style='height:12px'></div>", unsafe_allow_html=True)
-cfg1, cfg2, cfg3 = st.columns([2, 2, 2])
+cfg1, cfg2 = st.columns([2, 2])
 
 TIMEFRAME_OPTIONS = {
     "6 Months": 0.5,
@@ -374,13 +371,6 @@ with cfg1:
     selected_timeframe = st.selectbox("Data Window", list(TIMEFRAME_OPTIONS.keys()), index=4)
 with cfg2:
     risk_free_rate = st.number_input("Risk-Free Rate (%)", min_value=0.0, max_value=30.0, value=7.0, step=0.25, format="%.2f") / 100
-with cfg3:
-    st.markdown("<div style='height:28px'></div>", unsafe_allow_html=True)
-    st.markdown(
-        "<p style='color:#333 !important; font-size:0.7rem !important; letter-spacing:2px; padding-top:8px;'>"
-        "10K MC SIMULATIONS · NIFTY 50 BENCHMARK</p>",
-        unsafe_allow_html=True
-    )
 
 st.markdown('</div>', unsafe_allow_html=True)
 
